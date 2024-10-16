@@ -1,0 +1,54 @@
+// Input parameter: vcenterName
+var vcenterName = workflow.vcenterName;
+
+// Define output array
+var outputArray = [];
+
+// Function to retrieve content libraries and ISO files
+function getContentLibraries(vcenter) {
+    var contentLibraryUrl = "https://" + vcenter + "/rest/com/vmware/content/library";
+    
+    // HTTP REST call to get content libraries
+    var client = new RESTClient();
+    client.setBasicAuth('username', 'password'); // Replace with your credentials
+    var response = client.get(contentLibraryUrl);
+    
+    if (response.status === 200) {
+        var libraries = JSON.parse(response.responseText).value;
+        
+        for (var i = 0; i < libraries.length; i++) {
+            var library = libraries[i];
+            var libraryInfo = {
+                "libraryName": library.name,
+                "libraryId": library.id,
+                "isos": []
+            };
+            
+            // Fetch ISO files from the content library
+            var isoUrl = "https://" + vcenter + "/rest/com/vmware/content/library/item?libraryId=" + library.id;
+            var isoResponse = client.get(isoUrl);
+            
+            if (isoResponse.status === 200) {
+                var items = JSON.parse(isoResponse.responseText).value;
+                
+                for (var j = 0; j < items.length; j++) {
+                    if (items[j].name.endsWith('.iso')) { // Check if the item is an ISO file
+                        libraryInfo.isos.push({
+                            "isoName": items[j].name,
+                            "isoId": items[j].id
+                        });
+                    }
+                }
+            }
+            outputArray.push(libraryInfo);
+        }
+    } else {
+        throw "Error retrieving content libraries: " + response.status + " " + response.statusText;
+    }
+}
+
+// Call the function with the provided vCenter name
+getContentLibraries(vcenterName);
+
+// Store the output in a configuration element
+var configElement = new ConfigurationElement("ISOFilesInfo", outputArray);
