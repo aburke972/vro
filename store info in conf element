@@ -1,0 +1,54 @@
+// Define the configuration element name
+var configElementName = "myConfigElement"; // Replace with your actual config element name
+
+// Retrieve the configuration element
+var configElement = System.getModule("com.vmware.vro.config").getConfigurationElement(configElementName);
+
+if (!configElement) {
+    throw "Configuration element not found: " + configElementName;
+}
+
+// Example data structure to store vCenter information
+var vCenterInfo = {
+    "vCenters": {}
+};
+
+// Function to retrieve content library information
+function getContentLibraryInfo(vCenter) {
+    var contentLibraries = [];
+    var isoFiles = [];
+
+    // Replace this with actual logic to retrieve content libraries and ISO files
+    // For demonstration purposes, we add some dummy data
+    contentLibraries.push("library1");
+    isoFiles.push("iso1.iso", "iso2.iso");
+
+    return {
+        libraries: contentLibraries,
+        isos: isoFiles
+    };
+}
+
+// Loop through your vCenters
+var vCenters = ["vCenter1", "vCenter2"]; // Add your vCenter names here
+for (var i = 0; i < vCenters.length; i++) {
+    var vCenter = vCenters[i];
+    var libraryInfo = getContentLibraryInfo(vCenter);
+    
+    // Create structure for each vCenter
+    vCenterInfo.vCenters[vCenter] = {
+        "contentLibraries": {}
+    };
+
+    // Add content library information to the vCenter
+    for (var j = 0; j < libraryInfo.libraries.length; j++) {
+        var libraryName = libraryInfo.libraries[j];
+        vCenterInfo.vCenters[vCenter].contentLibraries[libraryName] = {
+            "isos": libraryInfo.isos
+        };
+    }
+}
+
+// Add the vCenter information to the configuration element
+configElement.setProperty("vCenterInfo", JSON.stringify(vCenterInfo));
+System.log("Successfully updated configuration element with vCenter information.");
