@@ -1,0 +1,89 @@
+// Input parameters: vmName, vcenterName
+var vmName = workflow.vmName;
+var vcenterName = workflow.vcenterName;
+
+// Retrieve the configuration element containing content library and ISO information
+var configElement = configurationElementManager.get("ISOFilesInfo"); // Adjust as per your configuration element name
+if (!configElement) {
+    throw "Configuration element not found.";
+}
+
+// Function to find the appropriate ISO for the specified VM
+function findISOForVM(vmName, vcenter) {
+    var libraries = configElement.value;
+    var isoId = null;
+    
+    // Loop through the content libraries to find the ISO for the specified VM
+    for (var i = 0; i < libraries.length; i++) {
+        var library = libraries[i];
+        
+        // Check if the library belongs to the specified vCenter (if applicable)
+        if (library.vcenterName === vcenter) {
+            for (var j = 0; j < library.isos.length; j++) {
+                isoId = library.isos[j].isoId; // Get the ISO ID
+                break; // Exit once we find the first ISO
+            }
+            if (isoId) break; // Break if we found an ISO
+        }
+    }
+
+    if (!isoId) {
+        throw "No ISO files found for the VM: " + vmName + " in vCenter: " + vcenter;
+    }
+
+    return isoId;
+}
+
+// Get the ISO ID for the specified VM
+var isoId = findISOForVM(vmName, vcenterName);
+
+// Proceed to mount the ISO to the VM using the REST API
+function mountISOToVM(vmName, isoId, vcenter) {
+    var vmUrl = "https://" + vcenter + "/rest/vcenter/vm?filter.name=" + encodeURIComponent(vmName);
+    
+    // HTTP REST call to get the VM
+    var client = new RESTClient();
+    client.setBasicAuth('username', 'password'); // Replace with your credentials
+    var response = client.get(vmUrl);
+    
+    if (response.status === 200) {
+        var vms = JSON.parse(response.responseText).value;
+        if (vms.length === 0) {
+            throw "VM not found: " + vmName;
+        }
+        
+        var vmId = vms[0].vm;
+
+        // Prepare the request body to mount the ISO
+        var mountRequest = {
+            "type": "CD/DVD",
+            "file": {
+                "library_item_id": isoId,
+                "type": "iso"
+            },
+            "connectable": {
+                "connected": true,
+                "start_connected": true
+            }
+        };
+        
+        var mountUrl = "https://" + vcenter + "/rest/vcenter/vm/" + vmId + "/hardware/CD/DVD";
+        
+        // HTTP REST call to mount the ISO
+        var mountResponse = client.put(mountUrl, JSON.stringify(mountRequest), {
+            "Content-Type": "application/json"
+        });
+        
+        if (mountResponse.status !== 204) {
+            throw "Error mounting ISO: " + mountResponse.status + " " + mountResponse.statusText;
+        }
+        
+        return "ISO mounted successfully to VM: " + vmName;
+    } else {
+        throw "Error retrieving VM: " + response.status + " " + response.statusText;
+    }
+}
+
+// Call the function to mount the ISO
+var resultMessage = mountISOToVM(vmName, isoId, vcenterName);
+return resultMessage;
