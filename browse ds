@@ -1,0 +1,36 @@
+// Get the datastore object based on the name provided
+var datastoreName = "YourDatastoreName"; // Change this to your datastore name
+var datastore = System.getModule("com.vmware.vc").getDatastoreByName(datastoreName);
+
+if (datastore == null) {
+    throw "Datastore not found!";
+}
+
+// Get the root file structure of the datastore
+var rootFolder = datastore.getRootFolder();
+var items = rootFolder.getChildEntity();
+
+// Function to recursively browse folders
+function browseFolder(folder, path) {
+    var folderItems = folder.getChildEntity();
+    for (var i = 0; i < folderItems.length; i++) {
+        var item = folderItems[i];
+        var itemPath = path + "/" + item.getName();
+        if (item instanceof Folder) {
+            // If the item is a folder, browse it recursively
+            browseFolder(item, itemPath);
+        } else if (item instanceof VirtualDisk) {
+            // If it's a virtual disk or file, log its details
+            System.log("File: " + itemPath);
+        } else {
+            // Log any other type
+            System.log("Item: " + itemPath);
+        }
+    }
+}
+
+// Start browsing from the root folder
+browseFolder(rootFolder, "");
+
+// Optionally, you can return a result if needed
+return "Browsing completed!";
